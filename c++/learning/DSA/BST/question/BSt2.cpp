@@ -26,15 +26,15 @@ void inorder(Node* root){
 // le-ri-ro poo
 // ro-le-ri pre 
 
-fn_ins:
-    if x_ask="HASH":
-       jump travesing; //B_Case
+// fn_ins:
+//     if x_ask="HASH":
+//        jump travesing; //B_Case
 
-    no of child : x_ask
-    for i in child :
-        //ask to insert child  
+//     no of child : x_ask
+//     for i in child :
+//         //ask to insert child  
         
-return fn_ins 
+// return fn_ins 
 
 
 
