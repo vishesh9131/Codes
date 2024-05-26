@@ -8,7 +8,7 @@ def recommend_similar_nodes(adj_matrix, node):
     # Create bipartite graph based on cosine similarity
     B = nx.Graph()
     B.add_nodes_from(range(num_nodes), bipartite=0)
-    B.add_nodes_from(range(num_nodes, 2*num_nodes), bipartite=1)
+    B.add_nodes_from(range(num_nodes, 2 * num_nodes), bipartite=1)
 
     # Add edges based on cosine similarity
     for i in range(num_nodes):
@@ -22,6 +22,8 @@ def recommend_similar_nodes(adj_matrix, node):
     # Find the community of the given node
     node_community = None
     for community in communities:
+        if isinstance(community, list):  # Ensure community is a list
+            community = set(community)  # Convert community to a set for hashing
         if node in community:
             node_community = community
             break
@@ -33,7 +35,7 @@ def recommend_similar_nodes(adj_matrix, node):
     recommendations = [n for n in node_community if n != node]
     return recommendations
 
-# Define Transformer Model
+
 class GraphTransformer(nn.Module):
     def __init__(self, num_layers, d_model, num_heads, d_feedforward, input_dim):
         super(GraphTransformer, self).__init__()
@@ -43,10 +45,13 @@ class GraphTransformer(nn.Module):
         self.output_linear = nn.Linear(d_model, 1)  # Output layer for predictions
 
     def forward(self, x):
+        x = x.float()  
         x = self.input_linear(x)
         x = self.transformer_encoder(x)
         x = self.output_linear(x)
         return x
+
+
 
 # Custom Dataset for Graph Data
 class GraphDataset(Dataset):
@@ -75,11 +80,10 @@ def train_model(model, data_loader, criterion, optimizer, num_epochs):
             optimizer.step()
         print(f"Epoch {epoch + 1}/{num_epochs}, Loss: {loss.item()}")
 
-# Inference
 def predict(model, graph):
     model.eval()
     with torch.no_grad():
-        input_data = graph.float()
+        input_data = torch.tensor(graph) 
         output = model(input_data.unsqueeze(0))
     return output.squeeze().numpy()
 

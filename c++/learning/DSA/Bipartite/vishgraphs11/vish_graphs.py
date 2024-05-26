@@ -39,6 +39,47 @@ def generate_random_graph(num_people, file_path="graph_dataset.csv", seed=None):
 
     np.savetxt(file_path, adj_matrix, delimiter=",")
     return file_path
+def recommend_similar_nodes(adj_matrix, node):
+    num_nodes = len(adj_matrix)
+
+    # Calculate cosine similarity
+    cosine_sim = cosine_similarity(adj_matrix)
+
+    # Create bipartite graph based on cosine similarity
+    B = nx.Graph()
+    B.add_nodes_from(range(num_nodes), bipartite=0)
+    B.add_nodes_from(range(num_nodes, 2 * num_nodes), bipartite=1)
+
+    # Add edges based on cosine similarity
+    for i in range(num_nodes):
+        for j in range(num_nodes):
+            if i != j and cosine_sim[i][j] > 0:  # Only consider positive similarity
+                B.add_edge(i, j + num_nodes, weight=cosine_sim[i][j])
+
+    # Detect communities using a community detection algorithm
+    communities = list(greedy_modularity_communities(B))
+
+    # Flatten the list of communities
+    flat_communities = [node for community in communities for node in community]
+
+    # Remove duplicates while preserving order
+    flat_communities = list(dict.fromkeys(flat_communities))
+
+    # Find the community of the given node
+    node_community = None
+    for community in communities:
+        if node in community:
+            node_community = community
+            break
+
+    if node_community is None:
+        return []
+
+    # Recommend other nodes in the same community
+    recommendations = [n for n in flat_communities if n != node]
+    return recommendations
+
+
 
 def find_top_nodes(matrix, num_nodes=10):
     strong_relations = []
@@ -57,6 +98,7 @@ def find_top_nodes(matrix, num_nodes=10):
 def draw_graph(adj_matrix, top_nodes):
     G = nx.DiGraph()
     nodes = set(range(len(adj_matrix)))
+
     G.add_nodes_from(nodes)
 
     for i in range(len(adj_matrix)):
@@ -73,7 +115,8 @@ def draw_graph(adj_matrix, top_nodes):
     plt.title("Graph Visualization")
     plt.show()
 
-def draw_graph_3d(adj_matrix, node_index, top_nodes):
+def draw_graph_3d(adj_matrix, node):
+    top_nodes = recommend_similar_nodes(adj_matrix, node)
     nodes = set(range(len(adj_matrix)))
     fig = plt.figure(figsize=(12, 8))
     start_time = time.time()
@@ -81,14 +124,17 @@ def draw_graph_3d(adj_matrix, node_index, top_nodes):
 
     pos = np.random.rand(len(nodes), 3)
 
+    # Determine the number of chunks
     num_chunks = len(nodes) // 1000 + 1
+
+    # Convert set to list
     nodes_list = list(nodes)
     chunk_legends = []
 
     for chunk_idx in range(num_chunks):
         start_idx = chunk_idx * 1000
         end_idx = min((chunk_idx + 1) * 1000, len(nodes))
-        chunk_nodes = nodes_list[start_idx:end_idx]
+        chunk_nodes = nodes_list[start_idx:end_idx]  # Use the list instead of the set
 
         for i in range(len(adj_matrix)):
             for j in range(len(adj_matrix[i])):
@@ -96,7 +142,7 @@ def draw_graph_3d(adj_matrix, node_index, top_nodes):
                     ax.plot([pos[i, 0], pos[j, 0]], [pos[i, 1], pos[j, 1]], [pos[i, 2], pos[j, 2]], 'gray')
 
         for n in chunk_nodes:
-            color = 'red' if n == node_index else 'blue' if n in top_nodes else 'black'
+            color = 'red' if n == node else 'blue' if n in top_nodes else 'black'
             ax.scatter(pos[n, 0], pos[n, 1], pos[n, 2], color=color)
 
     ax.text(0.95, 0.05, 0.05, 'vishGraphs_use_in_labs', fontsize=8, color='gray', ha='right', va='bottom', transform=ax.transAxes)
@@ -105,28 +151,8 @@ def draw_graph_3d(adj_matrix, node_index, top_nodes):
 
     plt.show()
 
-    elapsed_time = time.time() - start_time
+    elapsed_time = time.time() - start_time  # Calculate the elapsed time
     print(f"Time taken to process the graph: {elapsed_time:.2f} seconds")
-
-
-# def draw_graph_3d(adj_matrix, top_nodes):
-#     fig = plt.figure()
-#     ax = fig.add_subplot(111, projection='3d')
-#     nodes = set(range(len(adj_matrix)))
-#     pos = np.random.rand(len(nodes), 3)
-
-#     for i in range(len(adj_matrix)):
-#         for j in range(len(adj_matrix[i])):
-#             if adj_matrix[i, j] == 1 and i in nodes and j in nodes:  # Only add edges between strong relation nodes
-#                 ax.plot([pos[i, 0], pos[j, 0]], [pos[i, 1], pos[j, 1]], [pos[i, 2], pos[j, 2]], 'gray')
-
-#     for node in nodes:
-#         color = 'red' if node in top_nodes else 'black'
-#         ax.scatter(pos[node, 0], pos[node, 1], pos[node, 2], color=color)
-#     ax.text(0.95, 0.05, 0.05, 'vishGraphs_use_in_labs', fontsize=8, color='gray', ha='right', va='bottom', transform=ax.transAxes)
-#     plt.show()
-
-
 
 def show_bipartite_relationship(adj_matrix):
     B = nx.Graph()
