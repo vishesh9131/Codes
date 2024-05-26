@@ -1,3 +1,12 @@
+###############################################################################################################
+#                                             --vishgraphs--                                                  
+# vish_graph module takes adjmatrix as input and has fns like                                                
+    # 1. generate_random_graph(no_of_nodes,seed=23)
+    # 2. find_top_nodes(adj_matrix) : greatest number of strong correlations or famous nodes top 5 
+    # 3. draw_graph draws graph(matrix,set(range(len(adj_matrix))), set )
+# note: just write 3d after draw_graph this will make it in xyz space
+###############################################################################################################
+
 import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
