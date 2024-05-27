@@ -1,40 +1,4 @@
 from common_import import *
-def recommend_similar_nodes(adj_matrix, node):
-    num_nodes = len(adj_matrix)
-
-    # Calculate cosine similarity
-    cosine_sim = cosine_similarity(adj_matrix)
-
-    # Create bipartite graph based on cosine similarity
-    B = nx.Graph()
-    B.add_nodes_from(range(num_nodes), bipartite=0)
-    B.add_nodes_from(range(num_nodes, 2 * num_nodes), bipartite=1)
-
-    # Add edges based on cosine similarity
-    for i in range(num_nodes):
-        for j in range(num_nodes):
-            if i != j and cosine_sim[i][j] > 0:  # Only consider positive similarity
-                B.add_edge(i, j + num_nodes, weight=cosine_sim[i][j])
-
-    # Detect communities using a community detection algorithm
-    communities = list(greedy_modularity_communities(B))
-
-    # Find the community of the given node
-    node_community = None
-    for community in communities:
-        if isinstance(community, list):  # Ensure community is a list
-            community = set(community)  # Convert community to a set for hashing
-        if node in community:
-            node_community = community
-            break
-
-    if node_community is None:
-        return []
-
-    # Recommend other nodes in the same community
-    recommendations = [n for n in node_community if n != node]
-    return recommendations
-
 
 class GraphTransformer(nn.Module):
     def __init__(self, num_layers, d_model, num_heads, d_feedforward, input_dim):
@@ -42,7 +6,7 @@ class GraphTransformer(nn.Module):
         self.input_linear = nn.Linear(input_dim, d_model)  # Linear layer to map input_dim to d_model
         self.encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=num_heads, dim_feedforward=d_feedforward, batch_first=True)
         self.transformer_encoder = nn.TransformerEncoder(self.encoder_layer, num_layers=num_layers)
-        self.output_linear = nn.Linear(d_model, 1)  # Output layer for predictions
+        self.output_linear = nn.Linear(d_model, input_dim)  # Output layer for node scores
 
     def forward(self, x):
         x = x.float()  
@@ -62,7 +26,11 @@ class GraphDataset(Dataset):
         return len(self.adj_matrix)
 
     def __getitem__(self, idx):
-        return self.adj_matrix[idx], 0  # Dummy target
+        # Here, let's assume we're trying to predict connections for each node.
+        node_features = self.adj_matrix[idx]
+        targets = self.adj_matrix[idx]  # Use adjacency matrix row as the target.
+        return node_features, targets
+
 
 # Training Loop
 def train_model(model, data_loader, criterion, optimizer, num_epochs):
@@ -80,11 +48,53 @@ def train_model(model, data_loader, criterion, optimizer, num_epochs):
             optimizer.step()
         print(f"Epoch {epoch + 1}/{num_epochs}, Loss: {loss.item()}")
 
-def predict(model, graph):
+def predict(model, graph, node_index, top_k=5):
     model.eval()
     with torch.no_grad():
-        input_data = torch.tensor(graph) 
-        output = model(input_data.unsqueeze(0))
-    return output.squeeze().numpy()
+        input_data = torch.tensor(graph[node_index]).unsqueeze(0)  # Get the input node's features
+        output = model(input_data)
+        scores = output.squeeze().numpy()
+    # Get top-k node indices based on scores
+    recommended_indices = scores.argsort()[-top_k:][::-1]
+    return recommended_indices
 
+# Graph Drawing Function
+def draw_graph(adj_matrix, top_nodes, recommended_nodes=None):
+    G = nx.Graph()
+    num_nodes = adj_matrix.shape[0]
 
+    # Add nodes
+    for i in range(num_nodes):
+        G.add_node(i)
+
+    # Add edges
+    for i in range(num_nodes):
+        for j in range(i + 1, num_nodes):
+            if adj_matrix[i, j] == 1:
+                G.add_edge(i, j)
+
+    pos = nx.spring_layout(G)
+
+    # Draw nodes
+    node_colors = []
+    for node in G.nodes():
+        if recommended_nodes is not None and node in recommended_nodes:
+            node_colors.append('red')
+        else:
+            node_colors.append('skyblue')
+
+    nx.draw_networkx_nodes(G, pos, node_color=node_colors, node_size=500, alpha=0.8)
+
+    # Draw edges
+    nx.draw_networkx_edges(G, pos, width=1.0, alpha=0.5)
+
+    # Draw labels
+    nx.draw_networkx_labels(G, pos, font_size=12)
+
+    # Highlight top nodes with a different shape
+    if top_nodes is not None:
+        top_node_color = 'green'
+        nx.draw_networkx_nodes(G, pos, nodelist=top_nodes, node_color=top_node_color, node_size=500, node_shape='s')
+
+    plt.title("Graph Visualization with Recommended Nodes Highlighted in Red")
+    plt.show()
