@@ -16,7 +16,6 @@ class GraphTransformer(nn.Module):
         return x
 
 
-
 # Custom Dataset for Graph Data
 class GraphDataset(Dataset):
     def __init__(self, adj_matrix):
@@ -97,6 +96,6 @@ def draw_graph(adj_matrix, top_nodes, recommended_nodes=None):
         top_node_color = 'green'
         nx.draw_networkx_nodes(G, pos, nodelist=top_nodes, node_color=top_node_color, node_size=500, node_shape='s')
 
-    plt.title("Graph Visualization with Recommended Nodes Highlighted in Red")
+    plt.title("Recommended Nodes Highlighted in Blue and Top Nodes in Red")
     plt.show()
     
