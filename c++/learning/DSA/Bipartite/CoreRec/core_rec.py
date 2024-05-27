@@ -48,8 +48,7 @@ def train_model(model, data_loader, criterion, optimizer, num_epochs):
             optimizer.step()
         print(f"Epoch {epoch + 1}/{num_epochs}, Loss: {loss.item()}")
 
-def predict(model, graph, node_index,top_k=5):
-    
+def predict(model, graph, node_index, top_k=5):
     model.eval()
     with torch.no_grad():
         input_data = torch.tensor(graph[node_index]).unsqueeze(0)  # Get the input node's features
@@ -99,4 +98,3 @@ def draw_graph(adj_matrix, top_nodes, recommended_nodes=None):
 
     plt.title("Graph Visualization with Recommended Nodes Highlighted in Red")
     plt.show()
-    

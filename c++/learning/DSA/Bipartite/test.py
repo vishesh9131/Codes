@@ -7,9 +7,7 @@
 # # # note: just write 3d after draw_graph this will make it in xyz space
 # # ###############################################################################################################
 import numpy as np
-# import a as vg
-import core_rec as cs
-import vish_graphs as vg
+# import vishgraph as vg
 import core_rec as cs
 
 # for trainig

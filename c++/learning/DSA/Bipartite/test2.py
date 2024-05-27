@@ -12,8 +12,9 @@ from torch.utils.data import Dataset, DataLoader
 file_path = vg.generate_random_graph(40,seed=122)
 adj_matrix = np.loadtxt(file_path, delimiter=",")
 top_nodes = vg.find_top_nodes(adj_matrix)
-
 vg.draw_graph(adj_matrix,top_nodes=top_nodes)
+
+# vg.draw_graph(adj_matrix,top_nodes=top_nodes)
 
 
 
@@ -48,8 +49,8 @@ cs.train_model(model, data_loader, criterion, optimizer, num_epochs)
 
 # Use the trained model for node recommendations
 node_index = 2
-predictions = cs.predict(model, adj_matrix, node_index,top_k=5)
+predictions = cs.predict(model, adj_matrix, node_index, top_k=5)
 print(f"Recommended nodes for node {node_index}: {predictions}")
 print("Popular Nodes are :",top_nodes)
 
-vg.draw_graph_3d(adj_matrix,top_nodes=top_nodes,recommended_nodes=predictions)
+# vg.draw_graph_3d(adj_matrix,top_nodes=top_nodes,recommended_nodes=predictions)

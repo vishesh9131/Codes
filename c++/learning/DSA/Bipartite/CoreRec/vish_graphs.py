@@ -1,12 +1,11 @@
-# ###############################################################################################################
-# #                                             --vishgraphs--                                                  
-# # vish_graph module takes adjmatrix as input and has fns like                                                
-#     # 1. generate_random_graph(no_of_nodes,seed=23)
-#     # 2. find_top_nodes(adj_matrix) : greatest number of strong correlations or famous nodes top 5 
-#     # 3. draw_graph draws graph(matrix,set(range(len(adj_matrix))), set )
-# # note: just write 3d after draw_graph this will make it in xyz space
-# ###############################################################################################################
-
+# # ###############################################################################################################
+# # #                                             --vishgraphs--                                                  
+# # # vish_graph module takes adjmatrix as input and has fns like                                                
+# #     # 1. generate_random_graph(no_of_nodes,seed=23)
+# #     # 2. find_top_nodes(adj_matrix) : greatest number of strong correlations or famous nodes top 5 
+# #     # 3. draw_graph draws graph(matrix,set(range(len(adj_matrix))), set )
+# # # note: just write 3d after draw_graph this will make it in xyz space
+# # ###############################################################################################################
 import csv
 import numpy as np
 import networkx as nx
@@ -16,18 +15,13 @@ from sklearn.metrics.pairwise import cosine_similarity
 from networkx.algorithms.community import greedy_modularity_communities
 import core_rec as cs
 
-
 def generate_random_graph(num_people, file_path="graph_dataset.csv", seed=None):
-    np.random.seed(seed)
-    adj_matrix = np.zeros((num_people, num_people))
-
     np.random.seed(seed)
     adj_matrix = np.zeros((num_people, num_people))
 
     for i in range(num_people):
         for j in range(i + 1, num_people):
             strength = np.random.rand()
-            
             if strength < 0.1:
                 adj_matrix[i, j] = 1
                 adj_matrix[j, i] = 1
@@ -39,84 +33,58 @@ def generate_random_graph(num_people, file_path="graph_dataset.csv", seed=None):
 
     np.savetxt(file_path, adj_matrix, delimiter=",")
     return file_path
-def recommend_similar_nodes(adj_matrix, node):
-    num_nodes = len(adj_matrix)
-
-    # Calculate cosine similarity
-    cosine_sim = cosine_similarity(adj_matrix)
-
-    # Create bipartite graph based on cosine similarity
-    B = nx.Graph()
-    B.add_nodes_from(range(num_nodes), bipartite=0)
-    B.add_nodes_from(range(num_nodes, 2 * num_nodes), bipartite=1)
-
-    # Add edges based on cosine similarity
-    for i in range(num_nodes):
-        for j in range(num_nodes):
-            if i != j and cosine_sim[i][j] > 0:  # Only consider positive similarity
-                B.add_edge(i, j + num_nodes, weight=cosine_sim[i][j])
-
-    # Detect communities using a community detection algorithm
-    communities = list(greedy_modularity_communities(B))
-
-    # Flatten the list of communities
-    flat_communities = [node for community in communities for node in community]
-
-    # Remove duplicates while preserving order
-    flat_communities = list(dict.fromkeys(flat_communities))
-
-    # Find the community of the given node
-    node_community = None
-    for community in communities:
-        if node in community:
-            node_community = community
-            break
-
-    if node_community is None:
-        return []
-
-    # Recommend other nodes in the same community
-    recommendations = [n for n in flat_communities if n != node]
-    return recommendations
-
-
 
 def find_top_nodes(matrix, num_nodes=10):
-    strong_relations = []
     relation_counts = [0] * len(matrix)
     for i in range(len(matrix)):
         for j in range(i + 1, len(matrix[i])):
             if matrix[i, j] == matrix[j, i] == 1:
-                strong_relations.append((i, j))
                 relation_counts[i] += 1
                 relation_counts[j] += 1
     
     top_nodes = sorted(range(len(relation_counts)), key=lambda i: relation_counts[i], reverse=True)[:num_nodes]
     print(f"The top {num_nodes} nodes with the greatest number of strong correlations are: {top_nodes}")
-    return strong_relations, list(top_nodes)  # Convert top_nodes to a list
+    return top_nodes
 
-def draw_graph(adj_matrix, top_nodes):
-    G = nx.DiGraph()
-    nodes = set(range(len(adj_matrix)))
 
-    G.add_nodes_from(nodes)
+def draw_graph(adj_matrix, top_nodes=None, recommended_nodes=None):
+    G = nx.Graph()
+    num_nodes = adj_matrix.shape[0]
 
-    for i in range(len(adj_matrix)):
-        for j in range(len(adj_matrix[i])):
-            if adj_matrix[i, j] == 1 and i in nodes and j in nodes:  
+    # Add nodes
+    for i in range(num_nodes):
+        G.add_node(i)
+
+    # Add edges
+    for i in range(num_nodes):
+        for j in range(i+1, num_nodes):
+            if adj_matrix[i, j] == 1:
                 G.add_edge(i, j)
 
-    pos = nx.spring_layout(G, k=0.5)  
+    pos = nx.spring_layout(G)
 
-    node_colors = ['skyblue' if node not in top_nodes else 'red' for node in G.nodes()]
+    # Draw nodes
+    node_colors = []
+    for node in G.nodes():
+        if recommended_nodes is not None and node in recommended_nodes:
+            node_colors.append('green')
+        elif top_nodes is not None and node in top_nodes:
+            node_colors.append('red')
+        else:
+            node_colors.append('skyblue')
 
-    nx.draw(G, pos, with_labels=True, node_color=node_colors, node_size=700, edge_color='k', linewidths=1, font_size=15)
+    nx.draw_networkx_nodes(G, pos, node_color=node_colors, node_size=500, alpha=0.8)
 
-    plt.title("Graph Visualization")
+    # Draw edges
+    nx.draw_networkx_edges(G, pos, width=1.0, alpha=0.5)
+
+    # Draw labels
+    nx.draw_networkx_labels(G, pos, font_size=12)
+
+    plt.title("Graph Visualization with Recommended Nodes Highlighted in Green and Top Nodes in Red")
     plt.show()
 
-def draw_graph_3d(adj_matrix, node):
-    top_nodes = recommend_similar_nodes(adj_matrix, node)
+def draw_graph_3d(adj_matrix, node_index, top_nodes):
     nodes = set(range(len(adj_matrix)))
     fig = plt.figure(figsize=(12, 8))
     start_time = time.time()
@@ -124,17 +92,14 @@ def draw_graph_3d(adj_matrix, node):
 
     pos = np.random.rand(len(nodes), 3)
 
-    # Determine the number of chunks
     num_chunks = len(nodes) // 1000 + 1
-
-    # Convert set to list
     nodes_list = list(nodes)
     chunk_legends = []
 
     for chunk_idx in range(num_chunks):
         start_idx = chunk_idx * 1000
         end_idx = min((chunk_idx + 1) * 1000, len(nodes))
-        chunk_nodes = nodes_list[start_idx:end_idx]  # Use the list instead of the set
+        chunk_nodes = nodes_list[start_idx:end_idx]
 
         for i in range(len(adj_matrix)):
             for j in range(len(adj_matrix[i])):
@@ -142,7 +107,7 @@ def draw_graph_3d(adj_matrix, node):
                     ax.plot([pos[i, 0], pos[j, 0]], [pos[i, 1], pos[j, 1]], [pos[i, 2], pos[j, 2]], 'gray')
 
         for n in chunk_nodes:
-            color = 'red' if n == node else 'blue' if n in top_nodes else 'black'
+            color = 'red' if n == node_index else 'blue' if n in top_nodes else 'black'
             ax.scatter(pos[n, 0], pos[n, 1], pos[n, 2], color=color)
 
     ax.text(0.95, 0.05, 0.05, 'vishGraphs_use_in_labs', fontsize=8, color='gray', ha='right', va='bottom', transform=ax.transAxes)
@@ -151,22 +116,57 @@ def draw_graph_3d(adj_matrix, node):
 
     plt.show()
 
-    elapsed_time = time.time() - start_time  # Calculate the elapsed time
+    elapsed_time = time.time() - start_time
     print(f"Time taken to process the graph: {elapsed_time:.2f} seconds")
+
+def draw_graph_3d(adj_matrix, top_nodes=None, recommended_nodes=None):
+    G = nx.Graph()
+    num_nodes = adj_matrix.shape[0]
+
+    # Add nodes
+    for i in range(num_nodes):
+        G.add_node(i)
+
+    # Add edges
+    for i in range(num_nodes):
+        for j in range(i+1, num_nodes):
+            if adj_matrix[i, j] == 1:
+                G.add_edge(i, j)
+
+    pos = nx.spring_layout(G, dim=3)  # Ensure pos is in 3D
+
+    # Draw nodes
+    fig = plt.figure(figsize=(12, 8))
+    ax = fig.add_subplot(111, projection='3d')
+
+    for i in range(num_nodes):
+        for j in range(i+1, num_nodes):
+            if adj_matrix[i, j] == 1:
+                ax.plot([pos[i][0], pos[j][0]], [pos[i][1], pos[j][1]], [pos[i][2], pos[j][2]], 'gray')
+
+    for n in G.nodes():
+        color = 'red' if n in recommended_nodes else 'green' if n in top_nodes else 'blue'
+        ax.scatter(pos[n][0], pos[n][1], pos[n][2], color=color)
+
+    ax.text(0.95, 0.05, 0.05, 'vishGraphs_use_in_labs', fontsize=8, color='gray', ha='right', va='bottom', transform=ax.transAxes)
+
+    plt.title("3D Graph Visualization with Recommended Nodes Highlighted in Red and Top Nodes in Green")
+    plt.show()
+
+
+
 
 def show_bipartite_relationship(adj_matrix):
     B = nx.Graph()
 
     num_nodes = len(adj_matrix)
     B.add_nodes_from(range(num_nodes), bipartite=0)
-
     B.add_nodes_from(range(num_nodes, 2*num_nodes), bipartite=1)
 
     for i in range(num_nodes):
         for j in range(num_nodes):
-            if adj_matrix[i][j] == 1:  # Fix tuple indexing here
-                B.add_edge(i, j+num_nodes)  # Connect node i from set 1 to node j from set 2
-
+            if adj_matrix[i][j] == 1:
+                B.add_edge(i, j + num_nodes)
 
     pos = nx.bipartite_layout(B, nodes=range(num_nodes))
     nx.draw(B, pos, with_labels=True, node_size=500, node_color='skyblue')
@@ -215,17 +215,3 @@ def bipartite_matrix_maker(csv_path):
             values = [float(value) for value in row]
             adj_matrix.append(values)
     return adj_matrix
-
-
-#####################################################
-#To Write Poetry on
-#####################################################
-#  community_discovery
-# # def bipartition_graph(num_people):
-# num_p=4;
-# def test(num_p):
-#     for i in range(num_p):
-        
-# cont1 == cont2 == num_people 
-# cont1->firstnode cont2 ke kis kis se connected hai
-#####################################################

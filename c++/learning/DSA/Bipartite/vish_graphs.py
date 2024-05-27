@@ -143,10 +143,14 @@ def draw_graph_3d(adj_matrix, top_nodes=None, recommended_nodes=None):
         for j in range(i+1, num_nodes):
             if adj_matrix[i, j] == 1:
                 ax.plot([pos[i][0], pos[j][0]], [pos[i][1], pos[j][1]], [pos[i][2], pos[j][2]], 'gray')
-
-    for n in G.nodes():
-        color = 'red' if n in recommended_nodes else 'green' if n in top_nodes else 'blue'
-        ax.scatter(pos[n][0], pos[n][1], pos[n][2], color=color)
+    if top_nodes is not None:
+        for n in G.nodes():
+            color = 'red' if n in recommended_nodes else 'green' if n in top_nodes else 'blue'
+            ax.scatter(pos[n][0], pos[n][1], pos[n][2], color=color)
+    else:
+        for n in G.nodes():
+            color = 'blue' 
+            ax.scatter(pos[n][0], pos[n][1], pos[n][2], color=color)
 
     ax.text(0.95, 0.05, 0.05, 'vishGraphs_use_in_labs', fontsize=8, color='gray', ha='right', va='bottom', transform=ax.transAxes)
 
