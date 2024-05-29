@@ -1,11 +1,19 @@
-# # ###############################################################################################################
-# # #                                             --vishgraphs--                                                  
-# # # vish_graph module takes adjmatrix as input and has fns like                                                
-# #     # 1. generate_random_graph(no_of_nodes,seed=23)
-# #     # 2. find_top_nodes(adj_matrix) : greatest number of strong correlations or famous nodes top 5 
-# #     # 3. draw_graph draws graph(matrix,set(range(len(adj_matrix))), set )
-# # # note: just write 3d after draw_graph this will make it in xyz space
-# # ###############################################################################################################
+
+# ###############################################################################################################
+#                                             --vishgraphs--                                                  
+# vish_graph module takes adjmatrix as input and provides various functionalities for graph manipulation and
+# visualization. It includes functions for:
+#     1. Generating random graphs with optional seeding (generate_random_graph)
+#     2. Generating random weight matrices for graphs (generate_weight_matrix)
+#     3. Finding top nodes based on the number of strong correlations (find_top_nodes)
+#     4. Exporting graph data and node labels to a CSV file (export_graph_data_to_csv)
+#     5. Drawing 2D and 3D graph visualizations with support for node coloring, transparency, and edge weights
+#        (draw_graph, draw_graph_3d)
+#     6. Visualizing bipartite relationships and community detection based on cosine similarity
+#        (show_bipartite_relationship, show_bipartite_relationship_with_cosine)
+# Note: Append '3d' to draw_graph (draw_graph_3d) for 3D visualizations in xyz space.
+# ###############################################################################################################
+
 import csv
 import numpy as np
 import networkx as nx
@@ -34,7 +42,23 @@ def generate_random_graph(num_people, file_path="graph_dataset.csv", seed=None):
     np.savetxt(file_path, adj_matrix, delimiter=",")
     return file_path
 
-def find_top_nodes(matrix, num_nodes=10):
+def generate_weight_matrix(num_nodes, weight_range=(1, 10), file_path="weight_matrix.csv", seed=None):
+    """
+    Generates a random weight matrix for a given number of nodes.
+    """
+    if seed is not None:
+        np.random.seed(seed)
+
+    weight_matrix = np.zeros((num_nodes, num_nodes))
+    for i in range(num_nodes):
+        for j in range(i + 1, num_nodes):
+            weight = np.random.randint(weight_range[0], weight_range[1] + 1)
+            weight_matrix[i, j] = weight_matrix[j, i] = weight
+
+    np.savetxt(file_path, weight_matrix, delimiter=",")
+    return file_path
+
+def find_top_nodes(matrix, num_nodes=3):
     relation_counts = [0] * len(matrix)
     for i in range(len(matrix)):
         for j in range(i + 1, len(matrix[i])):
@@ -46,8 +70,30 @@ def find_top_nodes(matrix, num_nodes=10):
     print(f"The top {num_nodes} nodes with the greatest number of strong correlations are: {top_nodes}")
     return top_nodes
 
+def export_graph_data_to_csv(adj_matrix, node_labels, csv_file):
+    """
+    Export graph data and node labels to a CSV file using the csv module.
 
-def draw_graph(adj_matrix, top_nodes=None, recommended_nodes=None):
+    Args:
+    adj_matrix (numpy.ndarray): The adjacency matrix of the graph.
+    node_labels (dict): A dictionary with node indices as keys and labels as values.
+    csv_file (str): Path to the output CSV file.
+    """
+    with open(csv_file, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        
+        # Write headers
+        headers = [f'Node {i}' for i in range(len(adj_matrix))]
+        headers.append('Label')
+        writer.writerow(headers)
+        
+        # Write data rows
+        for index, row in enumerate(adj_matrix):
+            # Append the label to the row
+            row_with_label = list(row) + [node_labels.get(index, '')]
+            writer.writerow(row_with_label)
+
+def draw_graph(adj_matrix, top_nodes=None, recommended_nodes=None, node_labels=None, transparent_labeled=True, edge_weights=None):
     G = nx.Graph()
     num_nodes = adj_matrix.shape[0]
 
@@ -55,15 +101,17 @@ def draw_graph(adj_matrix, top_nodes=None, recommended_nodes=None):
     for i in range(num_nodes):
         G.add_node(i)
 
-    # Add edges
+    # Add edges with optional weights
     for i in range(num_nodes):
-        for j in range(i+1, num_nodes):
+        for j in range(i + 1, num_nodes):
             if adj_matrix[i, j] == 1:
                 G.add_edge(i, j)
+                if edge_weights is not None and i < len(edge_weights) and j < len(edge_weights[i]):
+                    G[i][j]['weight'] = edge_weights[i][j]
 
-    pos = nx.spring_layout(G)
+    pos = nx.spring_layout(G)  # 2D position layout
 
-    # Draw nodes
+    # Draw nodes with color coding
     node_colors = []
     for node in G.nodes():
         if recommended_nodes is not None and node in recommended_nodes:
@@ -75,51 +123,27 @@ def draw_graph(adj_matrix, top_nodes=None, recommended_nodes=None):
 
     nx.draw_networkx_nodes(G, pos, node_color=node_colors, node_size=500, alpha=0.8)
 
-    # Draw edges
-    nx.draw_networkx_edges(G, pos, width=1.0, alpha=0.5)
+    # Draw edges and optionally display weights
+    for i, j in G.edges():
+        edge_color = 'gray'
+        edge_alpha = 0.1 if transparent_labeled and (node_labels is None or i not in node_labels or j not in node_labels) else 0.5
+        nx.draw_networkx_edges(G, pos, edgelist=[(i, j)], width=1.0, alpha=edge_alpha, edge_color=edge_color)
+        
+        if 'weight' in G[i][j]:
+            mid_x = (pos[i][0] + pos[j][0]) / 2
+            mid_y = (pos[i][1] + pos[j][1]) / 2
+            plt.text(mid_x, mid_y, str(G[i][j]['weight']), color='red', fontsize=8)
 
     # Draw labels
-    nx.draw_networkx_labels(G, pos, font_size=12)
+    if node_labels is not None:
+        nx.draw_networkx_labels(G, pos, labels=node_labels, font_size=12)
+    else:
+        nx.draw_networkx_labels(G, pos, font_size=12)
 
     plt.title("Graph Visualization with Recommended Nodes Highlighted in Green and Top Nodes in Red")
     plt.show()
 
-def draw_graph_3d(adj_matrix, node_index, top_nodes):
-    nodes = set(range(len(adj_matrix)))
-    fig = plt.figure(figsize=(12, 8))
-    start_time = time.time()
-    ax = fig.add_subplot(111, projection='3d')
-
-    pos = np.random.rand(len(nodes), 3)
-
-    num_chunks = len(nodes) // 1000 + 1
-    nodes_list = list(nodes)
-    chunk_legends = []
-
-    for chunk_idx in range(num_chunks):
-        start_idx = chunk_idx * 1000
-        end_idx = min((chunk_idx + 1) * 1000, len(nodes))
-        chunk_nodes = nodes_list[start_idx:end_idx]
-
-        for i in range(len(adj_matrix)):
-            for j in range(len(adj_matrix[i])):
-                if adj_matrix[i, j] == 1 and i in chunk_nodes and j in chunk_nodes:
-                    ax.plot([pos[i, 0], pos[j, 0]], [pos[i, 1], pos[j, 1]], [pos[i, 2], pos[j, 2]], 'gray')
-
-        for n in chunk_nodes:
-            color = 'red' if n == node_index else 'blue' if n in top_nodes else 'black'
-            ax.scatter(pos[n, 0], pos[n, 1], pos[n, 2], color=color)
-
-    ax.text(0.95, 0.05, 0.05, 'vishGraphs_use_in_labs', fontsize=8, color='gray', ha='right', va='bottom', transform=ax.transAxes)
-    if num_chunks > 1:
-        ax.legend(chunk_legends, title='Chunks', loc='upper left')
-
-    plt.show()
-
-    elapsed_time = time.time() - start_time
-    print(f"Time taken to process the graph: {elapsed_time:.2f} seconds")
-
-def draw_graph_3d(adj_matrix, top_nodes=None, recommended_nodes=None):
+def draw_graph_3d(adj_matrix, top_nodes=None, recommended_nodes=None, node_labels=None, transparent_labeled=True, edge_weights=None):
     G = nx.Graph()
     num_nodes = adj_matrix.shape[0]
 
@@ -127,11 +151,13 @@ def draw_graph_3d(adj_matrix, top_nodes=None, recommended_nodes=None):
     for i in range(num_nodes):
         G.add_node(i)
 
-    # Add edges
+    # Add edges with optional weights
     for i in range(num_nodes):
-        for j in range(i+1, num_nodes):
+        for j in range(i + 1, num_nodes):
             if adj_matrix[i, j] == 1:
                 G.add_edge(i, j)
+                if edge_weights is not None and i < len(edge_weights) and j < len(edge_weights[i]):
+                    G[i][j]['weight'] = edge_weights[i][j]
 
     pos = nx.spring_layout(G, dim=3)  # Ensure pos is in 3D
 
@@ -139,23 +165,46 @@ def draw_graph_3d(adj_matrix, top_nodes=None, recommended_nodes=None):
     fig = plt.figure(figsize=(12, 8))
     ax = fig.add_subplot(111, projection='3d')
 
-    for i in range(num_nodes):
-        for j in range(i+1, num_nodes):
-            if adj_matrix[i, j] == 1:
-                ax.plot([pos[i][0], pos[j][0]], [pos[i][1], pos[j][1]], [pos[i][2], pos[j][2]], 'gray')
-    if top_nodes is not None:
-        for n in G.nodes():
-            color = 'red' if n in recommended_nodes else 'green' if n in top_nodes else 'blue'
-            ax.scatter(pos[n][0], pos[n][1], pos[n][2], color=color)
-    else:
-        for n in G.nodes():
-            color = 'blue' 
-            ax.scatter(pos[n][0], pos[n][1], pos[n][2], color=color)
+    # Chunking logic
+    num_chunks = num_nodes // 1000 + 1
+    nodes_list = list(G.nodes())
+    chunk_legends = []
 
-    ax.text(0.95, 0.05, 0.05, 'vishGraphs_use_in_labs', fontsize=8, color='gray', ha='right', va='bottom', transform=ax.transAxes)
+    for chunk_idx in range(num_chunks):
+        start_idx = chunk_idx * 1000
+        end_idx = min((chunk_idx + 1) * 1000, num_nodes)
+        chunk_nodes = nodes_list[start_idx:end_idx]
+
+        for i in chunk_nodes:
+            for j in chunk_nodes:
+                if G.has_edge(i, j):
+                    edge_alpha = 0.1 if transparent_labeled and (node_labels is None or i not in node_labels or j not in node_labels) else 1.0
+                    edge_color = 'gray'
+                    ax.plot([pos[i][0], pos[j][0]], [pos[i][1], pos[j][1]], [pos[i][2], pos[j][2]], color=edge_color, alpha=edge_alpha)
+                    
+                    # Display edge weights if available
+                    if 'weight' in G[i][j]:
+                        mid_x = (pos[i][0] + pos[j][0]) / 2
+                        mid_y = (pos[i][1] + pos[j][1]) / 2
+                        mid_z = (pos[i][2] + pos[j][2]) / 2
+                        ax.text(mid_x, mid_y, mid_z, str(G[i][j]['weight']), color='red', fontsize=8)
+
+        for n in chunk_nodes:
+            color = 'red' if top_nodes is not None and n in top_nodes else 'green' if recommended_nodes is not None and n in recommended_nodes else 'blue'
+            node_alpha = 0.1 if transparent_labeled and (node_labels is None or n not in node_labels) else 1.0
+            ax.scatter(pos[n][0], pos[n][1], pos[n][2], color=color, alpha=node_alpha)
+
+            if node_labels is not None and n in node_labels:
+                ax.text(pos[n][0], pos[n][1], pos[n][2], node_labels[n], fontsize=9)
+
+    ax.text2D(0.95, 0.05, 'vishGraphs_use_in_labs', fontsize=8, color='gray', ha='right', va='bottom', transform=ax.transAxes)
 
     plt.title("3D Graph Visualization with Recommended Nodes Highlighted in Red and Top Nodes in Green")
     plt.show()
+
+
+
+
 
 
 def show_bipartite_relationship(adj_matrix):

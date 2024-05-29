@@ -59,4 +59,4 @@ predictions = cs.predict(model, adj_matrix, node_index, top_k=5)
 print(f"Recommended nodes for node {node_index}: {predictions}")
 print("Popular Nodes are:", top_nodes)
 
-vg.draw_graph_3d(adj_matrix, top_nodes=top_nodes, recommended_nodes=predictions)
+vg.draw_graph_3d(adj_matrix, top_nodes=top_nodes, recommended_nodes=predictions,transparent_labeled=False)

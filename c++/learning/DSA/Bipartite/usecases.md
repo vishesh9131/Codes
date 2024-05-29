@@ -211,12 +211,40 @@ adj_matrix = np.loadtxt(file_path, delimiter=",")
 vg.draw_graph(adj_matrix)
 ```
 
-### Q18: Visualize a Graph with Edge Weights (Unreleased)
+### Q18: Visualize a Graph with Edge Weights 
 
 ```python
-file_path = vg.generate_random_graph(72, seed=332)
+import vish_graphs as vg
+import numpy as np
+import pandas as pd
+
+# numpeople means nodes and num_nodes means weights
+# they have to be identical 
+num_people=20
+num_nodes=20
+
+# generating random graph and weight matrix simple to hai....
+file_path=vg.generate_random_graph(num_people,file_path="graph.csv", seed=42)
+file_path1=vg.generate_weight_matrix(num_nodes, weight_range=(1, 10), file_path="weight_matrix.csv", seed=42)
+
+# wo generated data(csv) ko yaha load karinge 
 adj_matrix = np.loadtxt(file_path, delimiter=",")
-vg.draw_graph(adj_matrix, edge_weights=True)
+weight_matrix = np.loadtxt(file_path1, delimiter=",")
+
+# yeh to pata hi hai topnodes kesy bnana ha
+top_nodes = vg.find_top_nodes(adj_matrix, num_nodes=10)
+
+# nl=node ke labels 
+# node_labels yaha pedict banra hai aise :- {0:1,1:2,2:3,3:4,4:5,5:6}
+nl = [1,2,3,4,5,6]
+node_labels = {i: label for i, label in enumerate(nl)}
+
+# visulization part my favorite...
+# vg.draw_graph(adj_matrix, node_labels=node_labels,top_nodes=top_nodes,edge_weights=weight_matrix)
+
+# 3dVisulizn
+vg.draw_graph(adj_matrix, node_labels=node_labels,top_nodes=top_nodes,edge_weights=weight_matrix)
+
 ```
 
 ### Q19: Train a Model with a Custom Loss Function 
@@ -635,4 +663,76 @@ vg.show_bipartite_relationship(matrix, edge_labels=['A', 'B', 'C'])
 
 ```python
 I am working on it !!!
+```
+
+### Q50: labeling a graph with labels in csv format and Exporting that graph with label
+```python
+# #IF YOU HAVE CSV FILE AS A LABELER
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import numpy as np
+import core_rec as cs
+import vish_graphs as vg
+from torch.utils.data import Dataset, DataLoader
+import pandas as pd 
+import numpy as np
+import vish_graphs as vg
+import numpy as np
+file_path = vg.generate_random_graph(10, seed=122)
+
+adj_matrix = np.loadtxt(file_path, delimiter=",")
+
+# Read the CSV file into a DataFrame
+df = pd.read_csv("labelele.csv")
+
+# Access the column and convert it to a NumPy array
+col = df.values
+
+# Convert NumPy array to dictionary
+node_labels = {i: label for i, label in enumerate(col)}
+
+# Find the top nodes
+top_nodes = vg.find_top_nodes(adj_matrix, num_nodes=5)
+
+# Visualize the 2D graph with labels
+# vg.draw_graph(adj_matrix, top_nodes=top_nodes, node_labels=node_labels)
+
+# export in csv 
+vg.export_graph_data_to_csv(adj_matrix, node_labels, "output_graph_data.csv")
+```
+
+### Q51: Turning of transparency feature in 3D graph when nodes>labels.
+```python
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import numpy as np
+import core_rec as cs
+import vish_graphs as vg
+from torch.utils.data import Dataset, DataLoader
+import pandas as pd 
+import numpy as np
+import vish_graphs as vg
+
+import pandas as pd
+import numpy as np
+file_path = vg.generate_random_graph(50, seed=122)
+adj_matrix = np.loadtxt(file_path, delimiter=",")
+
+# Read the CSV file into a DataFrame
+df = pd.read_csv("labelele.csv")
+
+# # Find the top nodes
+top_nodes = vg.find_top_nodes(adj_matrix, num_nodes=5)
+
+# # Define node labels
+# node_labels = [1,2,3,4,5,6,7,8,9,10] #custom labels
+# {i: f"Node {i}" for i in range(num_people)} #labels in a itr
+col = df.values
+node_labels = {i: label for i, label in enumerate(col)}
+
+# # Visualize the 3D graph with labels
+vg.draw_graph_3d(adj_matrix, top_nodes=top_nodes, node_labels=node_labels,transparent_unlabeled=False)
+
 ```
