@@ -92,6 +92,8 @@ cs.train_model(model, data_loader, criterion, optimizer, num_epochs)
 predictions = cs.predict(model, adj_matrix, node_index, top_k=5, threshold=0.1)
 print(f"Recommended nodes for node {node_index}: {predictions}")
 
+
+# result with custom threshold
 # #[18, 26, 7, 39] 0.9
 # #[37, 26, 3, 39, 18] 0.8
 # #[37, 11, 26, 9, 22] 0.4
