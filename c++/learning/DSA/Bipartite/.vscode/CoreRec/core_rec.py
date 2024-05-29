@@ -16,6 +16,7 @@ class GraphTransformer(nn.Module):
         return x
 
 
+
 # Custom Dataset for Graph Data
 class GraphDataset(Dataset):
     def __init__(self, adj_matrix):
@@ -32,7 +33,7 @@ class GraphDataset(Dataset):
 
 
 # Training Loop
-def train_model(model, data_loader, criterion=False, optimizer=False, num_epochs=False):
+def train_model(model, data_loader, criterion, optimizer, num_epochs):
     model.train()
     for epoch in range(num_epochs):
         for batch in data_loader:
@@ -47,30 +48,7 @@ def train_model(model, data_loader, criterion=False, optimizer=False, num_epochs
             optimizer.step()
         print(f"Epoch {epoch + 1}/{num_epochs}, Loss: {loss.item()}")
 
-
-# THIS TRAIN FN IS A RESCUE BRANCH TO ABOVE FN DONOT DELETE IT
-
-# def train_model(model, data_loader, optimizer, num_epochs):
-#     model.train()
-#     for epoch in range(num_epochs):
-#         total_loss = 0
-#         for batch in data_loader:
-#             inputs, targets = batch
-#             inputs = inputs.float()
-#             targets = targets.float()
-
-#             optimizer.zero_grad()
-#             outputs = model(inputs)
-#             loss = custom_loss_fn(outputs, targets)
-#             loss.backward()
-#             optimizer.step()
-#             total_loss += loss.item()
-#         average_loss = total_loss / len(data_loader)
-#         print(f"Epoch {epoch + 1}/{num_epochs}, Loss: {average_loss:.4f}")
-
-
-def predict(model, graph, node_index,top_k=5):
-    
+def predict(model, graph, node_index, top_k=5):
     model.eval()
     with torch.no_grad():
         input_data = torch.tensor(graph[node_index]).unsqueeze(0)  # Get the input node's features
@@ -79,23 +57,6 @@ def predict(model, graph, node_index,top_k=5):
     # Get top-k node indices based on scores
     recommended_indices = scores.argsort()[-top_k:][::-1]
     return recommended_indices
-
-def predict(model, graph, node_index, top_k=5, threshold=0.5):
-    model.eval()
-    with torch.no_grad():
-        input_data = torch.tensor(graph[node_index]).unsqueeze(0)  # Get the input node's features
-        output = model(input_data)
-        scores = output.squeeze().numpy()
-    
-    # Apply threshold
-    recommended_indices = [i for i, score in enumerate(scores) if score > threshold]
-    recommended_indices = sorted(recommended_indices, key=lambda i: scores[i], reverse=True)[:top_k]
-    return recommended_indices
-
-
-
-
-
 
 # Graph Drawing Function
 def draw_graph(adj_matrix, top_nodes, recommended_nodes=None):
@@ -135,6 +96,5 @@ def draw_graph(adj_matrix, top_nodes, recommended_nodes=None):
         top_node_color = 'green'
         nx.draw_networkx_nodes(G, pos, nodelist=top_nodes, node_color=top_node_color, node_size=500, node_shape='s')
 
-    plt.title("Recommended Nodes Highlighted in Blue and Top Nodes in Red")
+    plt.title("Graph Visualization with Recommended Nodes Highlighted in Red")
     plt.show()
-    

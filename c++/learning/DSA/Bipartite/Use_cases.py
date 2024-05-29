@@ -58,7 +58,7 @@ from common_import import *
 # file_path = vg.generate_random_graph(40,seed=122)
 # adj_matrix = np.loadtxt(file_path, delimiter=",")
 # top_nodes = vg.find_top_nodes(adj_matrix)
-# vg.draw_graph(adj_matrix,top_nodes=top_nodes)
+# # vg.draw_graph(adj_matrix,top_nodes=top_nodes)
 
 # # 2
 # num_layers = 3
@@ -87,8 +87,5 @@ from common_import import *
 
 # # 6
 # vg.draw_graph_3d(adj_matrix,top_nodes=top_nodes,recommended_nodes=predictions)
-# # top nodes are pushed in predictions list
+# top nodes are pushed in predictions list
 #######################################################################################################
-file_path = vg.generate_random_graph(40, seed=122)
-adj_matrix = np.loadtxt(file_path, delimiter=",")
-vg.draw_graph_3d(adj_matrix, node_labels=['A', 'B', 'C'])

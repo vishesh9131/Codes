@@ -158,8 +158,6 @@ def draw_graph_3d(adj_matrix, top_nodes=None, recommended_nodes=None):
     plt.show()
 
 
-
-
 def show_bipartite_relationship(adj_matrix):
     B = nx.Graph()
 
