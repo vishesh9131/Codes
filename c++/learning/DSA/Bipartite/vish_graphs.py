@@ -22,6 +22,8 @@ import time
 from sklearn.metrics.pairwise import cosine_similarity
 from networkx.algorithms.community import greedy_modularity_communities
 import core_rec as cs
+from scipy.sparse import csr_matrix
+
 
 def generate_random_graph(num_people, file_path="graph_dataset.csv", seed=None):
     np.random.seed(seed)
@@ -258,6 +260,7 @@ def show_bipartite_relationship_with_cosine(adj_matrix):
     plt.title("Bipartite Relationship Visualization with Cosine Similarity-based Communities")
     plt.show()
 
+
 def bipartite_matrix_maker(csv_path):
     adj_matrix = []
     with open(csv_path, 'r') as file:
@@ -266,3 +269,34 @@ def bipartite_matrix_maker(csv_path):
             values = [float(value) for value in row]
             adj_matrix.append(values)
     return adj_matrix
+
+
+
+
+def draw_large_graph_efficiently(adj_matrix, top_nodes=None, recommended_nodes=None, node_labels=None):
+    # Convert to a sparse CSR matrix
+    sparse_adj_matrix = csr_matrix(adj_matrix)
+    G = nx.from_scipy_sparse_matrix(sparse_adj_matrix)
+
+    # Use an efficient layout algorithm (e.g., the Kamada-Kawai layout for large graphs)
+    pos = nx.kamada_kawai_layout(G, scale=2)
+
+    # Prepare node colors
+    node_colors = ['skyblue'] * G.number_of_nodes()
+    if recommended_nodes:
+        for node in recommended_nodes:
+            node_colors[node] = 'green'
+    if top_nodes:
+        for node in top_nodes:
+            node_colors[node] = 'red'
+
+    # Draw the graph efficiently
+    plt.figure(figsize=(10, 8))
+    nx.draw_networkx_nodes(G, pos, node_size=20, node_color=node_colors, alpha=0.6)
+    nx.draw_networkx_edges(G, pos, alpha=0.4)
+
+    if node_labels:
+        nx.draw_networkx_labels(G, pos, labels=node_labels, font_size=5)
+
+    plt.title("Large Graph Visualization")
+    plt.show()

@@ -138,3 +138,55 @@ def draw_graph(adj_matrix, top_nodes, recommended_nodes=None):
     plt.title("Recommended Nodes Highlighted in Blue and Top Nodes in Red")
     plt.show()
     
+
+
+
+def jaccard_similarity(graph, node):
+    G = nx.from_numpy_array(graph)  # Use from_numpy_array if from_numpy_matrix gives issues
+    scores = []
+    neighbors = set(G.neighbors(node))
+    for n in G.nodes():
+        if n != node:
+            neighbors_n = set(G.neighbors(n))
+            intersection = len(neighbors & neighbors_n)
+            union = len(neighbors | neighbors_n)
+            score = intersection / union if union != 0 else 0
+            scores.append((n, score))
+    return scores
+
+def adamic_adar_index(graph, node):
+    G = nx.from_numpy_array(graph)
+    scores = []
+    neighbors = set(G.neighbors(node))
+    for n in G.nodes():
+        if n != node:
+            neighbors_n = set(G.neighbors(n))
+            shared_neighbors = neighbors & neighbors_n
+            score = sum(1 / np.log(len(list(G.neighbors(nn)))) for nn in shared_neighbors if len(list(G.neighbors(nn))) > 1)
+            scores.append((n, score))
+    return scores
+
+
+
+def aaj_accuracy(graph, node_index, recommended_indices):
+    G = nx.from_numpy_array(graph)
+    jaccard_scores = []
+    adamic_adar_scores = []
+
+    # Calculate Jaccard and Adamic/Adar for recommended nodes
+    for rec_node in recommended_indices:
+        # Jaccard
+        preds = list(nx.jaccard_coefficient(G, [(node_index, rec_node)]))
+        if preds:
+            jaccard_scores.append(preds[0][2])  # preds[0][2] is the Jaccard coefficient
+
+        # Adamic/Adar
+        preds = list(nx.adamic_adar_index(G, [(node_index, rec_node)]))
+        if preds:
+            adamic_adar_scores.append(preds[0][2])  # preds[0][2] is the Adamic/Adar index
+
+    # Calculate average scores
+    avg_jaccard = np.mean(jaccard_scores) if jaccard_scores else 0
+    avg_adamic_adar = np.mean(adamic_adar_scores) if adamic_adar_scores else 0
+
+    return avg_jaccard, avg_adamic_adar
