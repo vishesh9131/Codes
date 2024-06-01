@@ -6,17 +6,14 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 
-# num_people=100000
-# num_people=100
 
-file_path = vg.generate_random_graph(num_people, file_path="graph_dataset.csv",seed=89)
-adj_matrix= np.loadtxt(file_path,delimiter=",")
-
+num_people=100
+file_path = vg.generate_random_graph(num_people, file_path="blobbag.csv",seed=56)
+    # adj_matrix= np.loadtxt(file_path,delimiter=",")
 file_path2 = vg.generate_weight_matrix(12,weight_range=(0,1),file_path="weight_matrix.csv",seed=89)
 weight_matrix=np.loadtxt(file_path2,delimiter=",")
-
+adj_matrix=np.loadtxt(file_path,delimiter=",")
 top_nodes=vg.find_top_nodes(adj_matrix,num_nodes=2)
-
 
 
 
@@ -74,7 +71,8 @@ print(f"Average Jaccard Score: {jaccard_score}")
 print(f"Average Adamic/Adar Score: {adamic_adar_score}")
 
 
-# vg.draw_graph_3d(adj_matrix,top_nodes=top_nodes,node_labels=node_labels,edge_weights=weight_matrix)
-# c=vg.bipartite_matrix_maker("graph_dataset.csv")
-# vg.show_bipartite_relationship(c)
+vg.draw_graph_3d(adj_matrix,top_nodes=top_nodes,node_labels=node_labels,edge_weights=weight_matrix)
+c=vg.bipartite_matrix_maker("graph_dataset.csv")
+vg.show_bipartite_relationship(c)
 
+# vg.draw_graph(adj_matrix,top_nodes=top_nodes,node_labels=node_labels,edge_weights=weight_matrix)

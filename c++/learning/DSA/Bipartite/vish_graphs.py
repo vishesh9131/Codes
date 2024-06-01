@@ -23,13 +23,42 @@ from sklearn.metrics.pairwise import cosine_similarity
 from networkx.algorithms.community import greedy_modularity_communities
 import core_rec as cs
 from scipy.sparse import csr_matrix
+from tqdm import tqdm
+import time
+from scipy.sparse import lil_matrix
+import scipy.sparse as sp
+from memory_profiler import profile
+from scipy.sparse import dok_matrix
+import multiprocessing
+from functools import partial
 
+
+
+# def generate_random_graph(num_people, file_path="graph_dataset.csv", seed=None):
+#     np.random.seed(seed)
+#     adj_matrix = np.zeros((num_people, num_people))
+
+#     for i in range(num_people):
+#         for j in range(i + 1, num_people):
+#             strength = np.random.rand()
+#             if strength < 0.1:
+#                 adj_matrix[i, j] = 1
+#                 adj_matrix[j, i] = 1
+#             elif strength < 0.4:
+#                 adj_matrix[i, j] = 1
+#             else:
+#                 adj_matrix[i, j] = 0
+#                 adj_matrix[j, i] = 0
+
+#     np.savetxt(file_path, adj_matrix, delimiter=",")
+#     return file_path
 
 def generate_random_graph(num_people, file_path="graph_dataset.csv", seed=None):
     np.random.seed(seed)
     adj_matrix = np.zeros((num_people, num_people))
 
-    for i in range(num_people):
+    # Wrap the outer loop with tqdm for a progress bar
+    for i in tqdm(range(num_people), desc="Generating graph"):
         for j in range(i + 1, num_people):
             strength = np.random.rand()
             if strength < 0.1:
@@ -42,6 +71,48 @@ def generate_random_graph(num_people, file_path="graph_dataset.csv", seed=None):
                 adj_matrix[j, i] = 0
 
     np.savetxt(file_path, adj_matrix, delimiter=",")
+    return file_path
+
+
+def generate_connections(num_people, i, p_strong, p_weak):
+    num_connections = num_people - i - 1
+    if num_connections <= 0:
+        return None, None
+    connections = np.random.rand(num_connections)
+    strong_connections = np.where(connections < p_strong)[0] + i + 1
+    weak_connections = np.where((connections >= p_strong) & (connections < p_strong + p_weak))[0] + i + 1
+    return strong_connections, weak_connections
+@profile
+def generate_large_random_graph(num_people, file_path="large_random_graph.csv", seed=None):
+    np.random.seed(seed)
+    adj_matrix = lil_matrix((num_people, num_people), dtype=np.int8)
+
+    p_strong = 0.1
+    p_weak = 0.3
+
+    # Setup multiprocessing pool within the main guard
+    pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
+    func = partial(generate_connections, num_people, p_strong=p_strong, p_weak=p_weak)
+    results = pool.map(func, range(num_people))
+    pool.close()
+    pool.join()
+
+    progress_bar = tqdm(total=num_people, desc="Generating Graph", unit="rows")
+
+    for i, result in enumerate(results):
+        if result[0] is not None:
+            strong_connections, weak_connections = result
+            adj_matrix[i, strong_connections] = 1
+            adj_matrix[strong_connections, i] = 1
+            adj_matrix[i, weak_connections] = 1
+        progress_bar.update(1)
+
+    progress_bar.close()
+
+    # Convert to a dense matrix and save as CSV
+    adj_matrix_dense = adj_matrix.toarray()
+    np.savetxt(file_path, adj_matrix_dense, delimiter=",")
+
     return file_path
 
 def generate_weight_matrix(num_nodes, weight_range=(1, 10), file_path="weight_matrix.csv", seed=None):
@@ -205,10 +276,6 @@ def draw_graph_3d(adj_matrix, top_nodes=None, recommended_nodes=None, node_label
     plt.show()
 
 
-
-
-
-
 def show_bipartite_relationship(adj_matrix):
     B = nx.Graph()
 
@@ -271,30 +338,77 @@ def bipartite_matrix_maker(csv_path):
     return adj_matrix
 
 
+    # Convert to a sparse CSR matrix if not already in that format
+    if not isinstance(adj_matrix, csr_matrix):
+        sparse_adj_matrix = csr_matrix(adj_matrix)
+    else:
+        sparse_adj_matrix = adj_matrix
+    
+    # Initialize the graph from the sparse matrix
+    G = nx.convert_matrix.from_scipy_sparse_array(sparse_adj_matrix)
+
+    # Use a more efficient layout algorithm for large graphs
+    print("Preparing graph layout...")
+    if G.number_of_nodes() > 1000:
+        pos = {}
+        iterations = 10
+        with tqdm(total=iterations, desc="Computing layout") as pbar:
+            for _ in range(iterations):
+                pos = nx.spring_layout(G, pos=pos, iterations=1)  # Update position incrementally
+                pbar.update(1)
+    else:
+        pos = nx.kamada_kawai_layout(G)  # Default settings for smaller graphs
+
+    # Prepare node colors efficiently
+    node_colors = np.full(G.number_of_nodes(), 'skyblue')
+    if recommended_nodes:
+        node_colors[recommended_nodes] = 'green'
+    if top_nodes:
+        node_colors[top_nodes] = 'red'
+
+    # Drawing the graph
+    print("Drawing graph...")
+    plt.figure(figsize=(10, 8))
+    nx.draw_networkx_nodes(G, pos, node_size=20, node_color=node_colors, alpha=0.6)
+    nx.draw_networkx_edges(G, pos, alpha=0.4)
+    if node_labels:
+        labels = {node: node_labels[node] for node in node_labels if node in pos}
+        nx.draw_networkx_labels(G, pos, labels=labels, font_size=5)
+
+    plt.title("Large Graph Visualization")
+    plt.show()
 
 
-def draw_large_graph_efficiently(adj_matrix, top_nodes=None, recommended_nodes=None, node_labels=None):
-    # Convert to a sparse CSR matrix
-    sparse_adj_matrix = csr_matrix(adj_matrix)
-    G = nx.from_scipy_sparse_matrix(sparse_adj_matrix)
+    # Convert to a sparse CSR matrix if not already in that format
+    if not isinstance(adj_matrix, csr_matrix):
+        sparse_adj_matrix = csr_matrix(adj_matrix)
+    else:
+        sparse_adj_matrix = adj_matrix
+    
+    # Initialize the graph from the sparse matrix
+    G = nx.convert_matrix.from_scipy_sparse_array(sparse_adj_matrix)
 
-    # Use an efficient layout algorithm (e.g., the Kamada-Kawai layout for large graphs)
-    pos = nx.kamada_kawai_layout(G, scale=2)
+    # Use a more efficient layout algorithm for large graphs
+    print("Preparing graph layout...")
+    if G.number_of_nodes() > 1000:
+        pos = nx.spring_layout(G, scale=2)  # Faster for large graphs
+    else:
+        pos = nx.kamada_kawai_layout(G, scale=2)  # Better for smaller or medium-sized graphs
 
     # Prepare node colors
     node_colors = ['skyblue'] * G.number_of_nodes()
     if recommended_nodes:
-        for node in recommended_nodes:
+        for node in tqdm(recommended_nodes, desc="Coloring recommended nodes"):
             node_colors[node] = 'green'
     if top_nodes:
-        for node in top_nodes:
+        for node in tqdm(top_nodes, desc="Coloring top nodes"):
             node_colors[node] = 'red'
 
-    # Draw the graph efficiently
+    # Drawing the graph
+    print("Drawing graph...")
     plt.figure(figsize=(10, 8))
     nx.draw_networkx_nodes(G, pos, node_size=20, node_color=node_colors, alpha=0.6)
     nx.draw_networkx_edges(G, pos, alpha=0.4)
-
     if node_labels:
         nx.draw_networkx_labels(G, pos, labels=node_labels, font_size=5)
 

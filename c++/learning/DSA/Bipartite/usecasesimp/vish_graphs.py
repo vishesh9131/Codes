@@ -42,6 +42,7 @@ def generate_random_graph(num_people, file_path="graph_dataset.csv", seed=None):
     np.savetxt(file_path, adj_matrix, delimiter=",")
     return file_path
 
+
 def generate_weight_matrix(num_nodes, weight_range=(1, 10), file_path="weight_matrix.csv", seed=None):
     """
     Generates a random weight matrix for a given number of nodes.
